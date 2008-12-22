@@ -1,5 +1,7 @@
 package WWW::PivotalTracker;
 
+use 5.006;
+
 use warnings;
 use strict;
 
@@ -20,15 +22,15 @@ use XML::Simple qw/
 
 =head1 NAME
 
-WWW::PivotalTracker - The great new WWW::PivotalTracker!
+WWW::PivotalTracker - Functional interface to Pivotal Tracker L<http://www.pivotaltracker.com/>
 
 =head1 VERSION
 
-Version 0.1.0_3
+Version 0.1.0_4
 
 =cut
 
-use version; our $VERSION = qv("0.1.0_3");
+use version; our $VERSION = qv("0.1.0_4");
 
 =head1 SYNOPSIS
 
@@ -59,6 +61,14 @@ our @EXPORT_OK = qw/
     project_details
     show_story
 /;
+
+#This should never contain anything.  It's just here to make sure that :all
+#works as expected.
+our @EXPORT = ();
+
+our %EXPORT_TAGS = (
+    all => [ @EXPORT, @EXPORT_OK, ],
+);
 
 =head1 FUNCTIONS
 
@@ -347,12 +357,9 @@ sub _do_request($class, $token, $request_url, $request_method; $content)
     );
 
     my $response = $class->_post_request($request);
-    croak($response->status_line()) unless ($response->is_success());
-
-    print $response->content();
 
     return XMLin(
-        $response->content(),
+        $response,
         ForceArray => [qw/
             error
             iteration
@@ -372,15 +379,17 @@ sub _do_request($class, $token, $request_url, $request_method; $content)
 sub _post_request($class, $request)
 {
     my $ua = _UserAgent->new();
+    my $response = $ua->request($request);
 
-    return $ua->request($request);
+    croak($response->status_line()) unless ($response->is_success());
+
+    return $response;
 }
 
 sub _make_xml($class, HASH $data)
 {
     return XMLout(
         $data,
-        AttrIndent => 0,
         KeepRoot   => 1,
         NoAttr     => 1,
     );
