@@ -3,7 +3,9 @@ abstract: Functional interface to Pivotal Tracker L<http://www.pivotaltracker.co
 author: 
   - Jacob Helwig <jhelwig@cpan.org>
 build_requires: 
+  Sub::OverRide: 0
   Test::Class: 0
+  Test::More: 0
   Test::Most: 0
 distribution_type: module
 generated_by: Module::Install version 0.68
@@ -17,6 +19,7 @@ no_index:
     - inc
     - t
 requires: 
+  Carp: 0
   Config::Any: 0
   File::HomeDir: 0
   Getopt::Long::Descriptive: 0
@@ -26,14 +29,16 @@ requires:
   Perl6::Parameters: 0
   Pod::Usage: 0
   XML::Simple: 0
+  aliased: 0
   parent: 0
   perl: 5.6.0
+  version: 0
 version: !!perl/hash:version 
   alpha: 1
-  original: 0.1.0_4
+  original: 0.1.0_5
   qv: 1
   version: 
     - 0
     - 1
     - 0
-    - 4
+    - 5
