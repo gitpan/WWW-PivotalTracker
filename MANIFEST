@@ -1,3 +1,4 @@
+ChangeLog
 Changes
 doc/pivotal_tracker.yml.example
 inc/Module/Install.pm
@@ -6,7 +7,6 @@ inc/Module/Install/Can.pm
 inc/Module/Install/Fetch.pm
 inc/Module/Install/Makefile.pm
 inc/Module/Install/Metadata.pm
-inc/Module/Install/Scripts.pm
 inc/Module/Install/Win32.pm
 inc/Module/Install/WriteAll.pm
 lib/WWW/PivotalTracker.pm
@@ -18,6 +18,7 @@ script/pivotal_tracker
 t/00-load.t
 t/01-does-not-pollute-namespace.t
 t/10-www-pivotaltracker.t
+t/changes.t
 t/lib/Test/WWW/PivotalTracker.pm
 t/pod-coverage.t
 t/pod.t

@@ -24,13 +24,9 @@ use XML::Simple qw/
 
 WWW::PivotalTracker - Functional interface to Pivotal Tracker L<http://www.pivotaltracker.com/>
 
-=head1 VERSION
-
-Version 0.1.0_5
-
 =cut
 
-use version; our $VERSION = qv("0.1.0_5");
+our $VERSION = "0.11";
 
 =head1 SYNOPSIS
 
@@ -90,7 +86,6 @@ sub project_details($token, $project_id) {
     croak("Malformed Project ID: '$project_id'") unless __PACKAGE__->_check_project_id($project_id);
 
     my $response = __PACKAGE__->_do_request($token, "projects/$project_id", "GET");
-
 
     if (!defined $response || lc $response->{'success'} ne 'true') {
         return {
@@ -383,7 +378,7 @@ sub _post_request($class, $request)
 
     croak($response->status_line()) unless ($response->is_success());
 
-    return $response;
+    return $response->content();
 }
 
 sub _make_xml($class, HASH $data)

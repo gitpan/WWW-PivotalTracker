@@ -3,7 +3,7 @@ abstract: Functional interface to Pivotal Tracker L<http://www.pivotaltracker.co
 author: 
   - Jacob Helwig <jhelwig@cpan.org>
 build_requires: 
-  Sub::OverRide: 0
+  Sub::Override: 0
   Test::Class: 0
   Test::More: 0
   Test::Most: 0
@@ -35,10 +35,9 @@ requires:
   version: 0
 version: !!perl/hash:version 
   alpha: 1
-  original: 0.1.0_5
+  original: v0.10_05
   qv: 1
   version: 
     - 0
-    - 1
-    - 0
+    - 10
     - 5
