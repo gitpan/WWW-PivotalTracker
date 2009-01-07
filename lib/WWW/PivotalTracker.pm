@@ -29,7 +29,7 @@ WWW::PivotalTracker - Functional interface to Pivotal Tracker L<http://www.pivot
 
 =cut
 
-our $VERSION = "0.12";
+our $VERSION = "0.13";
 
 =head1 SYNOPSIS
 
@@ -42,6 +42,7 @@ This module provides simple methods to interact with the Pivotal Tracker API.
         project_details
         show_story
         stories_for_filter
+        update_story
     /;
 
     my $details = project_details("API Token", "Project ID");
@@ -61,6 +62,7 @@ our @EXPORT_OK = qw/
     project_details
     show_story
     stories_for_filter
+    update_story
 /;
 
 #This should never contain anything.  It's just here to make sure that :all
@@ -87,7 +89,8 @@ iteration, and which day of the week the iterations start on.
 
 =cut
 
-sub project_details($token, $project_id) {
+sub project_details($token, $project_id)
+{
     croak("Malformed Project ID: '$project_id'") unless __PACKAGE__->_check_project_id($project_id);
 
     my $response = __PACKAGE__->_do_request($token, "projects/$project_id", "GET");
@@ -152,7 +155,7 @@ sub show_story($token, $project_id, $story_id)
     my $story = __PACKAGE__->_sanitize_story_xml($response->{'story'}->[0]);
 
     return {
-        success       => 'true',
+        success => 'true',
         %{$story},
     };
 }
@@ -298,7 +301,7 @@ sub delete_story($token, $project_id, $story_id)
 
 =head2 stories_for_filter
 
-Find all stories given search paremeters.
+Find all stories given search parameters.
 
     my $result = stories_for_filter($token, $project_id, $search_filter);
 
@@ -312,12 +315,16 @@ Find all stories given search paremeters.
         print $result->{'errors'};
     }
 
-In the example above C<< @stories >> will be an array of story hashrefs.  See the description of B<show_story> for the details of the hashrefs.
+In the example above C<< @stories >> will be an array of story hashrefs.  See the description of C<show_story> for the details of the hashrefs.
 
-Any multi-word terms in the search filter must be enclosed by double quotes.
+Any multi-word terms in the search filter must be enclosed by double quotes. (See L<http://www.pivotaltracker.com/help>: Search)
 
     Example:
-        requested_by:"Jacob Helwig"
+        requeser:"Jacob Helwig"
+        owner:"Jacob Helwig"
+        mywork:"Jacob Helwig"
+        state:unstarted
+        type:Feature
 
 =cut
 
@@ -340,6 +347,57 @@ sub stories_for_filter($token, $project_id, $search_filter)
         success => 'true',
         message => $response->{'message'},
         stories => [ @stories ],
+    };
+}
+
+=head2 update_story
+
+Update aspects of a given story.
+
+    my $result = update_story($token, $project_id, $story_id, { current_state => 'started' });
+
+See the description of C<show_story> for the details of C<$result>.
+
+=cut
+
+sub update_story($token, $project_id, $story_id, $story_details)
+{
+    croak("Malformed Project ID: '$project_id'") unless __PACKAGE__->_check_project_id($project_id);
+    croak("Malformed Story ID: '$story_id'") unless __PACKAGE__->_check_story_id($story_id);
+
+    foreach my $key (keys %$story_details) {
+        croak("Unrecognized option: $key")
+            unless __PACKAGE__->_is_one_of($key, [qw/
+                created_at
+                current_state
+                deadline
+                description
+                estimate
+                labels
+                name
+                note
+                owned_by
+                requested_by
+                story_type
+            /]);
+    }
+
+    my $content = __PACKAGE__->_make_xml({ story => $story_details });
+
+    my $response = __PACKAGE__->_do_request($token, "projects/$project_id/stories/$story_id", "PUT", $content);
+
+    if (!defined $response || $response->{'success'} ne 'true') {
+        return {
+            success => 'false',
+            errors  => $response->{'errors'},
+        };
+    }
+
+    my $story = __PACKAGE__->_sanitize_story_xml($response->{'story'}->[0]);
+
+    return {
+        success => 'true',
+        %{$story},
     };
 }
 
@@ -383,6 +441,7 @@ sub _sanitize_story_xml($class, $story)
         deadline      => $story->{'deadline'},
         story_type    => $story->{'story_type'},
         requested_by  => $story->{'requested_by'},
+        owned_by      => $story->{'owned_by'},
         labels        => $labels,
         notes         => $notes,
         url           => $story->{'url'},
