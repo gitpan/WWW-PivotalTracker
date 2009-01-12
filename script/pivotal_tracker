@@ -9,6 +9,7 @@ use Getopt::Long::Descriptive qw/ :all      /;
 use Hash::Merge               qw/ merge     /;
 use Pod::Usage                qw/ pod2usage /;
 use WWW::PivotalTracker qw/
+    add_note
     add_story
     all_stories
     delete_story
@@ -47,6 +48,7 @@ pivotal_tracker [options]
       --search <filter>  Search for stories given a filter
    -c --comment          Comment on story
    -u --update-story     Update the details of a story
+      --add-note <note>  Add a note to an existing story
       --deliver-all      Deliver all deliverable stories
 
  Story Display Options:
@@ -55,12 +57,13 @@ pivotal_tracker [options]
 
  Story Attributes:
    -S --story            Story title to create
+   -d --description      Story description
    -b --requested-by     Who requested the story
    -o --owned-by         Who is responsible for working on the story
    -l --label            Label to apply (May appear more than once, or be a single comma separated list
    -e --estimate         Point estimate for story
    -C --created-at       Date/Time story was created (Defaults to 'now')
-   -d --deadline         Deadline of the story (Only applicable to 'release' story type)
+      --deadline         Deadline of the story (Only applicable to 'release' story type)
 
  Story Type Options:
    --feature             Set story type to 'feature' (Default for new stories)
@@ -125,7 +128,7 @@ Many flags aren't implemented yet, and are merely placeholders at this point.
 
 =cut
 
-our $VERSION = "0.13";
+our $VERSION = "0.14";
 
 my $options_format = "usage: %c %o";
 my @options = (
@@ -148,6 +151,7 @@ my @options = (
     [ 'search=s'       => 'Search for stories given a filter',                 ],
     [ 'update-story|u' => 'Update the details of a story',                     ],
     [ 'comment|c'      => 'Comment on story',                                  ],
+    [ 'add-note=s'     => 'Add a note to an existing story',                   ],
     [ 'deliver-all'    => 'Deliver all deliverable stories',                   ],
     [                                                                          ],
     [ ' Story Display Options:',                                               ],
@@ -156,12 +160,13 @@ my @options = (
     [                                                                          ],
     [ 'Story Attributes:',                                                     ],
     [ 'story|S=s'        => 'Story title to create',                           ],
+    [ 'description|d=s'  => 'Story description',                               ],
     [ 'requested-by|b=s' => 'Who requested the story',                         ],
     [ 'owned_by|o=s'     => 'Who is responsible for working on the story',     ],
     [ 'label|l=s@'       => 'Label to apply (May appear more than once, or be a single comma separated list', ],
     [ 'estimate|e=s'     => "Point estimate for story",                        ],
     [ 'created-at|C=s'   => "Date/Time story was created (Defaults to 'now')", ],
-    [ 'deadline|d=s'     => "Deadline of the story (Only applicable to 'release' story type)", ],
+    [ 'deadline=s'       => "Deadline of the story (Only applicable to 'release' story type)", ],
     [                                                                          ],
     [ 'Story Type Options:',                                                   ],
     [ 'story-type=s'   => [
@@ -263,6 +268,11 @@ sub _delete_story($project_id, $story_id)
     return delete_story(_api_key(), $project_id, $story_id);
 }
 
+sub _add_note($project_id, $story_id, $note)
+{
+    return add_note(_api_key(), $project_id, $story_id, $note);
+}
+
 sub _display_error($result)
 {
     print STDERR "Unable to process request:\n";
@@ -293,9 +303,14 @@ sub _display_story($story; $options)
         . sprintf("           Name: %s\n", $story->{'name'})
         . sprintf("       Estimate: %s\n", $story->{'estimate'})
         . sprintf("          State: %s\n", $story->{'current_state'});
-    $story_text .=
-          sprintf("    Description: %s\n", $story->{'description'})
-            if defined $story->{'description'};
+
+    if (defined $story->{'description'}) {
+        my @description_lines = split("\n", $story->{'description'});
+
+        $story_text .= sprintf("    Description: %s\n", shift @description_lines);
+        $story_text .= sprintf("                 %s\n", $_) foreach @description_lines;
+        $story_text .= "\n" if @description_lines;
+    }
     $story_text .=
           sprintf("   Requested By: %s\n", $story->{'requested_by'});
     $story_text .=
@@ -338,6 +353,14 @@ sub _display_stories($stories; $options)
         print "=" x 50 . "\n\n" if $num_stories++ >= 1;
         _display_story($story, $options);
     }
+}
+
+sub _display_note($note)
+{
+    my $note_text = sprintf("Note (%s) %s @ %s:\n", $note->{'id'}, $note->{'author'}, $note->{'date'});
+    $note_text .= sprintf("    %s\n", $_) foreach split("\n", $note->{'text'});
+
+    print $note_text;
 }
 
 sub _response_was_successful($response)
@@ -426,6 +449,7 @@ sub _main()
             $project_id,
             {
                 name          => $opts->{'story'},
+                description   => $opts->{'description'},
                 requested_by  => ($opts->{'requested_by'} || $cfg->{'General'}->{'Me'}),
                 labels        => (exists $opts->{'label'} ? join(",", @{$opts->{'label'}}) : undef),
                 estimate      => $opts->{'estimate'},
@@ -457,6 +481,7 @@ sub _main()
             grep { exists $opts->{$_} } qw/
                 created_at
                 deadline
+                description
                 estimate
                 owned_by
                 requested_by
@@ -496,6 +521,23 @@ sub _main()
 
         if (_response_was_successful($result)) {
             print $result->{'message'} . "\n";
+            exit 0;
+        }
+        else {
+            _display_error($result);
+            exit 1;
+        }
+    }
+    elsif (exists $opts->{'add_note'}) {
+        unless (exists $opts->{'story_id'}) {
+            print STDERR "Must specify a Story ID to add a note.\n";
+            exit 1;
+        }
+
+        my $result = _add_note($project_id, $opts->{'story_id'}, $opts->{'add_note'});
+
+        if (_response_was_successful($result)) {
+            _display_note($result);
             exit 0;
         }
         else {
